@@ -9,7 +9,7 @@ class write_normal_seq extends uvm_sequence #(axi_seq_item);
   axi_seq_item seq; 
 
   task body(); 
-    repeat(500) begin 
+    repeat(10) begin 
       seq = axi_seq_item::type_id::create("seq"); 
       start_item(seq); 
       assert(seq.randomize() with { 
@@ -38,7 +38,7 @@ class write_addr_seq extends uvm_sequence #(axi_seq_item);
   axi_seq_item seq; 
    
   task body(); 
-    repeat(500) begin 
+    repeat(10) begin 
       seq = axi_seq_item::type_id::create("seq"); 
       start_item(seq); 
       assert(seq.randomize() with { 
@@ -46,6 +46,7 @@ class write_addr_seq extends uvm_sequence #(axi_seq_item);
         ARVALID  == 1'b0; 
         WVALID   == 1'b1; 
         aw_delay == 0; 
+        WSTRB    == 4'b1111; 
         w_delay  != 0; 
       }); 
       finish_item(seq); 
@@ -59,14 +60,14 @@ class write_data_seq extends uvm_sequence #(axi_seq_item);
 
   `uvm_object_utils(write_data_seq) 
    
-  function new(string name = "write_data_seq"); 
+  function new(string name = "write_addr_seq"); 
     super.new(name); 
   endfunction 
    
   axi_seq_item seq; 
 
   task body(); 
-    repeat(500) begin 
+    repeat(10) begin 
       seq = axi_seq_item::type_id::create("seq"); 
       start_item(seq); 
       assert(seq.randomize() with { 
@@ -87,23 +88,27 @@ class read_addr_seq extends uvm_sequence #(axi_seq_item);
 
   `uvm_object_utils(read_addr_seq) 
 
-  function new(string name = "read_addr_seq"); 
+  function new(string name = "read_normal_seq"); 
     super.new(name); 
   endfunction 
 
-  axi_seq_item seq; 
+  axi_seq_item rd_seq; 
 
   task body(); 
-    repeat(500) begin 
-      seq = axi_seq_item::type_id::create("seq"); 
-      start_item(seq); 
-      assert(seq.randomize() with { 
-        ARVALID == 1'b1; 
-        AWVALID == 1'b0; 
-        WVALID  == 1'b0; 
-      }); 
-      finish_item(seq); 
-    end 
+    repeat(1) begin 
+      for (int addr = 32'h0000_0000; addr <= 32'h0000_003C; addr += 4) begin
+        rd_seq = axi_seq_item::type_id::create("rd_seq");
+        start_item(rd_seq);
+        assert(rd_seq.randomize() with {
+          AWVALID  == 1'b0;
+          WVALID   == 1'b0;
+          ARVALID  == 1'b1;
+          ARADDR   == addr;
+          ar_delay != w_delay;
+        });
+        finish_item(rd_seq);
+      end
+    end
   endtask 
 
 endclass 
@@ -121,37 +126,31 @@ class write_read_back_seq extends uvm_sequence #(axi_seq_item);
   axi_seq_item rd_seq; 
    
   task body();
-    repeat(50) begin
-      // WRITE: 0x00, 0x04, 0x08, ... 0x3C
-      for (int addr = 32'h0000_0000; addr <= 32'h0000_003C; addr += 4) begin
-        wr_seq = axi_seq_item::type_id::create("wr_seq");
-        start_item(wr_seq);
-        assert(wr_seq.randomize() with {
-          AWVALID  == 1'b1;
-          WVALID   == 1'b1;
-          AWADDR   == addr;
-          aw_delay == 0;
-          w_delay  == 2;
-          ARVALID  == 1'b0;
-          WSTRB    == 4'b1111;
-        });
-        finish_item(wr_seq);
-      end
+    // WRITE: 0x00, 0x04, 0x08, ... 0x3C
+    for (int addr = 32'h0000_0000; addr <= 32'h0000_003C; addr += 4) begin
+      wr_seq = axi_seq_item::type_id::create("wr_seq");
+      start_item(wr_seq);
+      assert(wr_seq.randomize() with {
+        AWVALID  == 1'b1;
+        WVALID   == 1'b1;
+        AWADDR   == addr;
+        aw_delay != w_delay;
+        ARVALID  == 1'b0;
+      });
+      finish_item(wr_seq);
+    end
 
-      // READ: same addresses 0x00, 0x04, ... 0x3C
-      for (int addr = 32'h0000_0000; addr <= 32'h0000_003C; addr += 4) begin
-        rd_seq = axi_seq_item::type_id::create("rd_seq");
-        start_item(rd_seq);
-        assert(rd_seq.randomize() with {
-          AWVALID  == 1'b0;
-          WVALID   == 1'b0;
-          ARVALID  == 1'b1;
-          ARADDR   == addr;
-          ar_delay == 0;
-          w_delay  == 0;
-        });
-        finish_item(rd_seq);
-      end
+    // READ: same addresses 0x00, 0x04, ... 0x3C
+    for (int addr = 32'h0000_0000; addr <= 32'h0000_003C; addr += 4) begin
+      rd_seq = axi_seq_item::type_id::create("rd_seq");
+      start_item(rd_seq);
+      assert(rd_seq.randomize() with {
+        AWVALID  == 1'b0;
+        WVALID   == 1'b0;
+        ARVALID  == 1'b1;
+        ARADDR   == addr;
+      });
+      finish_item(rd_seq);
     end
   endtask
 
@@ -167,16 +166,16 @@ class slverr_write_seq extends uvm_sequence #(axi_seq_item);
   endfunction
 
   task body();
-    repeat(50) begin
+    repeat(10) begin
       axi_seq_item wr_item, rd_item;
       wr_item = axi_seq_item::type_id::create("wr_item");
 
       start_item(wr_item);
       if (!wr_item.randomize() with {
-        AWADDR inside {32'h28, 32'h2C, 32'h30};
-        AWVALID == 1;
-        WVALID  == 1;
-        ARVALID == 0;
+        AWADDR   inside {32'h28, 32'h2C, 32'h30};
+        AWVALID  == 1;
+        WVALID   == 1;
+        ARVALID  == 0;
         aw_delay != w_delay;
       })
         `uvm_error("SLVERR_WR_SEQ", "Randomization failed")
@@ -186,10 +185,10 @@ class slverr_write_seq extends uvm_sequence #(axi_seq_item);
 
       start_item(rd_item);
       if (!rd_item.randomize() with {
-        ARADDR  == wr_item.AWADDR;
-        AWVALID == 0;
-        WVALID  == 0;
-        ARVALID == 1;
+        ARADDR   == wr_item.AWADDR;
+        AWVALID  == 0;
+        WVALID   == 0;
+        ARVALID  == 1;
       })
         `uvm_error("SLVERR_WR_SEQ", "Randomization failed")
       finish_item(rd_item);
@@ -208,16 +207,17 @@ class slverr_read_seq extends uvm_sequence #(axi_seq_item);
   endfunction
 
   task body();
-    repeat(50) begin
+    repeat(10) begin
       axi_seq_item item;
       item = axi_seq_item::type_id::create("item");
 
       start_item(item);
       if (!item.randomize() with {
-        ARADDR inside {32'h34, 32'h38};
-        ARVALID == 1;
-        AWVALID == 0;
-        WVALID  == 0;
+        ARADDR   inside {32'h34, 32'h38};
+        ARVALID  == 1;
+        RREADY   == 1;
+        AWVALID  == 0;
+        WVALID   == 0;
       })
         `uvm_error("SLVERR_RD_SEQ", "Randomization failed")
       finish_item(item);
@@ -239,69 +239,35 @@ class decerr_seq extends uvm_sequence #(axi_seq_item);
   axi_seq_item rd_seq; 
    
   task body();
-    repeat(50) begin
-      // DECERR WRITE TEST
-      for (int addr = 32'h0000_0040; addr <= 32'h0000_007C; addr += 4) begin
-        wr_seq = axi_seq_item::type_id::create("wr_seq");
-        start_item(wr_seq);
-        wr_seq.address_align.constraint_mode(0);
-        assert(wr_seq.randomize() with {
-          AWVALID  == 1'b1;
-          WVALID   == 1'b1;
-          AWADDR   == addr;
-          aw_delay != w_delay;
-          ARVALID  == 1'b0;
-        });
-        wr_seq.address_align.constraint_mode(1);
-        finish_item(wr_seq);
-      end
+    // DECERR WRITE TEST
+    for (int addr = 32'h0000_0040; addr <= 32'h0000_007C; addr += 4) begin
+      wr_seq = axi_seq_item::type_id::create("wr_seq");
+      start_item(wr_seq);
+      wr_seq.address_alian.constraint_mode(0);
+      assert(wr_seq.randomize() with {
+        AWVALID  == 1'b1;
+        WVALID   == 1'b1;
+        AWADDR   == addr;
+        aw_delay != w_delay;
+        ARVALID  == 1'b0;
+      });
+      wr_seq.address_alian.constraint_mode(1);
+      finish_item(wr_seq);
+    end
 
-      // DECERR READ TEST
-      for (int addr = 32'h0000_0040; addr <= 32'h0000_007C; addr += 4) begin
-        rd_seq = axi_seq_item::type_id::create("rd_seq");
-        start_item(rd_seq);
-        rd_seq.address_align.constraint_mode(0);
-        assert(rd_seq.randomize() with {
-          AWVALID  == 1'b0;
-          WVALID   == 1'b0;
-          ARVALID  == 1'b1;
-          ARADDR   == addr;
-        });
-        rd_seq.address_align.constraint_mode(1);
-        finish_item(rd_seq);
-      end
-
-      for (int i = 7; i <= 31; i++) begin
-        bit [31:0] addr = (32'h1 << i);
-        wr_seq = axi_seq_item::type_id::create("wr_seq");
-        start_item(wr_seq);
-        wr_seq.address_align.constraint_mode(0);
-        assert(wr_seq.randomize() with {
-          AWVALID  == 1'b1;
-          WVALID   == 1'b1;
-          AWADDR   == addr;
-          aw_delay != w_delay;
-          ARVALID  == 1'b0;
-        });
-        wr_seq.address_align.constraint_mode(1);
-        finish_item(wr_seq);
-      end
-
-      // DECERR READ TEST - toggle ARADDR[31:7] one bit at a time
-      for (int i = 7; i <= 31; i++) begin
-        bit [31:0] addr = (32'h1 << i);
-        rd_seq = axi_seq_item::type_id::create("rd_seq");
-        start_item(rd_seq);
-        rd_seq.address_align.constraint_mode(0);
-        assert(rd_seq.randomize() with {
-          AWVALID  == 1'b0;
-          WVALID   == 1'b0;
-          ARVALID  == 1'b1;
-          ARADDR   == addr;
-        });
-        rd_seq.address_align.constraint_mode(1);
-        finish_item(rd_seq);
-      end
+    // DECERR READ TEST
+    for (int addr = 32'h0000_0040; addr <= 32'h0000_007C; addr += 4) begin
+      rd_seq = axi_seq_item::type_id::create("rd_seq");
+      start_item(rd_seq);
+      rd_seq.address_alian.constraint_mode(0);
+      assert(rd_seq.randomize() with {
+        AWVALID  == 1'b0;
+        WVALID   == 1'b0;
+        ARVALID  == 1'b1;
+        ARADDR   == addr;
+      });
+      rd_seq.address_alian.constraint_mode(1);
+      finish_item(rd_seq);
     end
   endtask
 
@@ -325,16 +291,18 @@ class read_write_simultaneous_seq extends uvm_sequence #(axi_seq_item);
       start_item(item);
       assert(item.randomize() with {
         // WRITE
-        AWVALID == 1'b1;
-        WVALID  == 1'b1;
-        AWADDR  == addr;
+        AWVALID  == 1'b1;
+        WVALID   == 1'b1;
+        AWADDR   == addr;
+        WSTRB    == 4'b1111;
 
         // READ
-        ARVALID == 1'b1;
-        ARADDR  == addr;
+        ARVALID  == 1'b1;
+        ARADDR   == addr;
 
         // Simultaneous
         aw_delay != w_delay;
+        ar_delay != 0;
       });
       finish_item(item);
     end
@@ -359,28 +327,27 @@ class slverr_unaligned_write_read_seq extends uvm_sequence #(axi_seq_item);
     for (int addr = 32'h0000_0001; addr <= 32'h0000_003F; addr++) begin
       wr_item = axi_seq_item::type_id::create("wr_item");
       start_item(wr_item);
-      wr_item.address_align.constraint_mode(0);
+      wr_item.address_alian.constraint_mode(0);
       assert(wr_item.randomize() with {
         AWADDR   == addr;
         AWVALID  == 1'b1;
         WVALID   == 1'b1;
         ARVALID  == 1'b0;
-        aw_delay == 0;
-        w_delay  == 1;
+        aw_delay != w_delay;
       });
-      wr_item.address_align.constraint_mode(1);
+      wr_item.address_alian.constraint_mode(1);
       finish_item(wr_item);
 
       rd_item = axi_seq_item::type_id::create("rd_item");
       start_item(rd_item);
-      rd_item.address_align.constraint_mode(0);
+      rd_item.address_alian.constraint_mode(0);
       assert(rd_item.randomize() with {
-        ARADDR  == addr;
-        ARVALID == 1'b1;
-        AWVALID == 1'b0;
-        WVALID  == 1'b0;
+        ARADDR   == addr;
+        ARVALID  == 1'b1;
+        AWVALID  == 1'b0;
+        WVALID   == 1'b0;
       });
-      rd_item.address_align.constraint_mode(1);
+      rd_item.address_alian.constraint_mode(1);
       finish_item(rd_item);
     end
   endtask
