@@ -90,15 +90,13 @@ Coverage includes:
 
 # Assertions (SVA)
 
-Assertions bound to the interface include:
+Assertions are bound directly to the `axi_inf` interface:
 
-- AWADDR must remain stable while AWVALID is high and AWREADY is not yet asserted
-- WDATA / WSTRB must remain stable while WVALID is high and WREADY is not yet asserted
-- ARADDR must remain stable while ARVALID is high and ARREADY is not yet asserted
-- RDATA must remain stable while ARVALID is high and ARREADY is not yet asserted
-- BRESP must remain stable while BVALID is high and BREADY is not yet asserted
-- RVALID must be observed following ARVALID and ARREADY assertion
-
+- **a_reset** — When `aresetn` is low, `AWREADY`, `WREADY`, `BVALID`, `ARREADY` and `RVALID` must all be inactive.
+- **a_rdata_stable** — While `RVALID` is high and `RREADY` is not yet asserted, `RDATA` and `RRESP` must remain stable on the following cycle.
+- **a_awvalid_after_handshake** — Once an `AWVALID`/`AWREADY` handshake completes, `AWVALID` must stay low until the corresponding `BVALID`/`BREADY` handshake occurs.
+- **a_arvalid_after_handshake** — Once an `ARVALID`/`ARREADY` handshake completes, `ARVALID` must stay low until the corresponding `RVALID`/`RREADY` handshake occurs.
+- **a_no_unknown** — `AWREADY`, `WREADY`, `BVALID`, `BRESP`, `ARREADY`, `RVALID`, `RDATA` and `RRESP` must never carry unknown (`X`) values while out of reset.
 ---
 
 # Test Cases
