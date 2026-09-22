@@ -26,14 +26,7 @@ class axi_scoreboard extends uvm_scoreboard;
   task run_phase(uvm_phase phase); 
     compare_loop(); 
   endtask 
-
-  // -------------------------------------------------------------- 
-  // Pairs ip_seq/op_seq transactions and compares them. Races the 
-  // pairing attempt against reset so a transaction that's already 
-  // been dequeued (and so can't be flushed by process_reset()) is 
-  // discarded instead of getting mismatched with the next real 
-  // response. 
-  // -------------------------------------------------------------- 
+  
   task compare_loop(); 
     axi_seq_item ip_seq; 
     axi_seq_item op_seq; 
