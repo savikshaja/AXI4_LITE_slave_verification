@@ -1,4 +1,41 @@
+# AXI4-Lite Slave (UVM Verification)
 
+A register-based AXI4-Lite slave peripheral implemented in Verilog RTL, verified using a constrained-random, protocol-checking UVM-style SystemVerilog testbench. The slave receives read and write transactions over the AXI4-Lite protocol and performs the corresponding memory operations, with read-only, write-only and reserved address regions.
+
+---
+
+## Features
+
+- Full AXI4-Lite five-channel protocol support (AW, W, B, AR, R)
+- Independent, decoupled address/data handshaking (address and data may arrive in any order, including simultaneously)
+- Parameterized register file (`MEM_DEPTH`, `DATA_WIDTH`)
+- Read-only, write-only and reserved address region support
+- SLVERR / DECERR error response generation for unaligned, out-of-range and access-type violations
+- Byte-enable (WSTRB) support for partial word updates
+- Independent read/write FSMs enabling parallel operation
+- Fully verified using **SystemVerilog + UVM**
+- Functional coverage and bound SystemVerilog Assertions (SVA)
+
+---
+
+## Directory Structure
+
+├── rtl/
+│ └── axi4_lite_slave.sv
+│
+├── tb/
+│ ├── interface
+│ ├── sequence_item
+│ ├── driver
+│ ├── monitors
+│ ├── scoreboard
+│ ├── subscriber
+│ ├── environment
+│ ├── sequences
+│ ├── tests
+│ └── top.sv
+│
+└── README.md
 ---
 
 # Parameters
