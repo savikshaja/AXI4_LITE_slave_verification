@@ -18,26 +18,6 @@ A register-based AXI4-Lite slave peripheral implemented in Verilog RTL, verified
 
 ---
 
-## Directory Structure
-
-├── rtl/
-│ └── axi4_lite_slave.sv
-│
-├── tb/
-│ ├── interface
-│ ├── sequence_item
-│ ├── driver
-│ ├── monitors
-│ ├── scoreboard
-│ ├── subscriber
-│ ├── environment
-│ ├── sequences
-│ ├── tests
-│ └── top.sv
-│
-└── README.md
----
-
 # Parameters
 
 | Parameter | Default | Description |
